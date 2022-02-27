@@ -12,7 +12,12 @@ const mainController = {
       .catch((error) => console.log(error));
   },
   bookDetail: (req, res) => {
-    // Implement look for details in the database
+    db.Books.findByPk(req.params.id)
+        .then((Books) => {
+          res.render("Books", {Books: Books})
+        })
+        .catch(function(error){
+          console.log(error)});
     res.render('bookDetail');
   },
   bookSearch: (req, res) => {
@@ -23,7 +28,14 @@ const mainController = {
     res.render('search');
   },
   deleteBook: (req, res) => {
-    // Implement delete book
+    db.Books.destroy({
+      where: {id: req.params.id}
+      })
+  .then(() => {
+    res.redirect("/")
+  })
+     .catch(function(error){
+      console.log(error)});   
     res.render('home');
   },
   authors: (req, res) => {
@@ -54,19 +66,67 @@ const mainController = {
       .catch((error) => console.log(error));
   },
   login: (req, res) => {
-    // Implement login process
     res.render('login');
   },
   processLogin: (req, res) => {
-    // Implement login process
+    db.User.findAll({where: {email: req.body.email}})
+        .then((resultado) => {
+        if (resultado.length == 0){
+            res.render("login", {
+                errors:{
+                    email: {msg: "El email no corresponde a un usuario registrado" }}, 
+                    oldData : req.body}
+              )
+        }else{
+            let PassCheck = bcryptjs.compareSync(req.body.password, resultado[0].dataValues.password);
+            if(PassCheck == true){
+                let loggedUser = resultado[0].dataValues;
+                delete loggedUser.Pass;
+                req.session.loggedUser = loggedUser;
+
+                if(req.body.recordar){
+                    res.cookie("email", req.body.email, {maxAge: (1000*60)*2});
+                    };
+                if(loggedUser.role_id == 2){
+                    return res.redirect("/user/perfil")
+                }else{
+                    return res.redirect("/user/admin")
+                }
+                
+            }else{
+                return res.render("login", {errors:{Pass: {msg: "La contraseña no es correcta"}}});
+                    };
+            };
+        }
+    )
+    .catch(function(error){
+        console.log(error)
+    })
     res.render('home');
   },
   edit: (req, res) => {
-    // Implement edit book
-    res.render('editBook', {id: req.params.id})
+    db.Books.findByPk(req.params.id)
+      .then((product) => {
+        res.render('editBook', {id: req.params.id})
+      })
+      .catch(function(error){
+        console.log(error)});
   },
   processEdit: (req, res) => {
-    // Implement edit book
+    db.Books.update(
+      {
+          ...req.body,
+          image: req.file.filename
+      },             
+      {
+          where: {id: req.params.id}
+      },
+  )
+  .then(() => {
+      res.redirect("/")
+  })
+    .catch(function(error){
+      console.log(error)});
     res.render('home');
   }
 };
